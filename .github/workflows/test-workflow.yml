@@ -63,6 +63,7 @@ jobs:
           GH_TOKEN: ${{ secrets.TEST_TOKEN }}
         run: |
           HAS_NEXT_PAGE=true
+          CURSOR=""
           if [[ "${{ inputs.release_branch }}" == "" ]]; then
             while $HAS_NEXT_PAGE
             do
