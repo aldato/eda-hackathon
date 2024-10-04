@@ -77,10 +77,10 @@ jobs:
           IS_DRAFT=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isDraft')
           IS_PRERELEASE=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isPrerelease')
           IS_NAME_EMPTY=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
-          if [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "true" ] && [ "$IS_NAME_EMPTY" != "" ]; then
-            echo "Preproduction pre-relase ${{ inputs.release_branch }}"
+          if [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "true" ] && [ "$IS_NAME_EMPTY" != "" ] && [ "${{ inputs.environment }}" == "preproduction" ]; then
+            echo "Preproduction prerelase ${{ inputs.release_branch }}"
             MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
-          elif [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "false" ] && [ "$IS_NAME_EMPTY" != "" ] && [[ "${{ inputs.environment }}" == "production" ]]; then
+          elif [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "false" ] && [ "$IS_NAME_EMPTY" != "" ] && [ "${{ inputs.environment }}" == "production" ]; then
             echo "Production release ${{ inputs.release_branch }}"
             MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
           else
