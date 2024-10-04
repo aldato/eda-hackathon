@@ -68,7 +68,7 @@ jobs:
             while $HAS_NEXT_PAGE
             do
               LATEST_RELEASE=$(gh api graphql -f query='
-                query ($cursor: String!) {
+                query ($CURSOR: String!) {
                   repository(owner: "aldato", name: "eda-hackathon") {
                     releases(before: $CURSOR,
                             first: 1, orderBy: {field: CREATED_AT, direction: DESC}) {
