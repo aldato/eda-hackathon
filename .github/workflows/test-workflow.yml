@@ -59,12 +59,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Define real-time environment variables
-        # env:
-        #   GH_TOKEN: ${{ secrets. }}
         run: |
-          # They didn't specify a release branch name - computing latest prerelease tag
-          # - sort: newest to oldest
-          # - limit: 1
           HAS_NEXT_PAGE=true
           if [[ "${{ inputs.release_branch }}" == "" ]]; then
             while $HAS_NEXT_PAGE
@@ -103,4 +98,3 @@ jobs:
           # echo "Dry run is "${{ inputs.dry_run }}
           # echo "Auto merge is "${{ inputs.auto_merge }}
           echo "heh"
-          exit 0
