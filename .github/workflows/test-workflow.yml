@@ -102,3 +102,5 @@ jobs:
           # echo "Using sre branch "$SRE_BRANCH
           # echo "Dry run is "${{ inputs.dry_run }}
           # echo "Auto merge is "${{ inputs.auto_merge }}
+          echo "heh"
+          exit 0
