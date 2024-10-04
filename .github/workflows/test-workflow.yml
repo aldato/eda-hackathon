@@ -87,7 +87,7 @@ jobs:
             echo "No valid release is present"
             exit 1
           fi
-          if [ "${{ inputs.release_branch }}" != "$MODEL_BRANCH" ]; then
+          if [[ "${{ inputs.release_branch }}" != "$MODEL_BRANCH" ]]; then
             echo "Release branch used doesn't match current release name"
             exit 1
           fi
