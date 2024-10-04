@@ -1,5 +1,5 @@
 ---
-name: 'Upgrade mgt-preprod based on releases tagged as prerelease'
+name: 'Upgrade mgt-prod based on releases tagged as release'
 
 on:
   release:
