@@ -89,7 +89,7 @@ jobs:
                 break
               fi
               HAS_NEXT_PAGE=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.pageInfo.hasNextPage')
-              if [ $"HAS_NEXT_PAGE" == "false" ]]; then
+              if [ "$HAS_NEXT_PAGE" == "false" ]; then
                 echo "No valid prerelease is present"
                 exit 1
               fi
