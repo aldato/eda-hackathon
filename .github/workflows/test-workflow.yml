@@ -90,6 +90,7 @@ jobs:
                 exit 1
               fi
               CURSOR=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.pageInfo.startCursor')
+            done
             echo "MODEL_BRANCH=$MODEL_BRANCH" >> $GITHUB_ENV
             echo "Using model branch "$MODEL_BRANCH
             echo "SRE_BRANCH=$MODEL_BRANCH" >> $GITHUB_ENV
