@@ -80,8 +80,10 @@ jobs:
             IS_NAME_EMPTY=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
             if [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "true" ] && [ "$IS_NAME_EMPTY" != "" ]; then
               MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
+            elif [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "false" ] && [ "$IS_NAME_EMPTY" != "" ] && [ "${{ inputs.environment }}" == "production" ]; then
+              MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
             else
-              echo "No valid prerelease is present"
+              echo "No valid release is present"
               exit 1
             fi
           else
