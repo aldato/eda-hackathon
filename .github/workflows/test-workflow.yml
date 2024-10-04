@@ -62,35 +62,37 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.TEST_TOKEN }}
         run: |
-          if [[ "${{ inputs.release_branch }}" == "" ]]; then
-            LATEST_RELEASE=$(gh api graphql -f query='
-              query {
-                repository(owner: "aldato", name: "eda-hackathon") {
-                  releases(first: 1, orderBy: {field: CREATED_AT, direction: DESC}) {
-                    nodes {
-                      name
-                      isPrerelease
-                      isDraft
-                    }
+          LATEST_RELEASE=$(gh api graphql -f query='
+            query {
+              repository(owner: "aldato", name: "eda-hackathon") {
+                releases(first: 1, orderBy: {field: CREATED_AT, direction: DESC}) {
+                  nodes {
+                    name
+                    isPrerelease
+                    isDraft
                   }
                 }
-              }')
-            IS_DRAFT=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isDraft')
-            IS_PRERELEASE=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isPrerelease')
-            IS_NAME_EMPTY=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
-            if [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "true" ] && [ "$IS_NAME_EMPTY" != "" ]; then
-              echo "Preproduction pre-relase ${{ inputs.release_branch }}"
-              MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
-            elif [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "false" ] && [ "$IS_NAME_EMPTY" != "" ] && [ "${{ inputs.environment }}" == "production" ]; then
-              echo "Production release ${{ inputs.release_branch }}"
-              MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
-            else
-              echo "No valid release is present"
-              exit 1
-            fi
+              }
+            }')
+          IS_DRAFT=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isDraft')
+          IS_PRERELEASE=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isPrerelease')
+          IS_NAME_EMPTY=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
+          if [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "true" ] && [ "$IS_NAME_EMPTY" != "" ]; then
+            echo "Preproduction pre-relase ${{ inputs.release_branch }}"
+            MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
+          elif [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "false" ] && [ "$IS_NAME_EMPTY" != "" ] && [ "${{ inputs.environment }}" == "production" ]; then
+            echo "Production release ${{ inputs.release_branch }}"
+            MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
           else
-            MODEL_BRANCH=${{ inputs.release_branch }}
+            echo "No valid release is present"
+            exit 1
           fi
+          if [ "${{ inputs.release_branch }}" != "$MODEL_BRANCH" ]; then
+            echo "Release branch used doesn't match current release name"
+            exit 1
+          fi
+
+          MODEL_BRANCH=${{ inputs.release_branch }}
           echo "MODEL_BRANCH=$MODEL_BRANCH" >> $GITHUB_ENV
           echo "Using model branch "$MODEL_BRANCH
           echo "SRE_BRANCH=$MODEL_BRANCH" >> $GITHUB_ENV
