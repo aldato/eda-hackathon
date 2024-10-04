@@ -1,0 +1,27 @@
+---
+name: 'Upgrade mgt-preprod based on releases tagged as prerelease'
+
+on:
+  release:
+    types: [prereleased]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  print-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Prerelease tag used: ${{ github.ref_name }}"
+        run: exit 0
+
+  call-upgrade-base:
+    uses: ./.github/workflows/test-workflow.yml
+    with:
+      dry_run: false
+      auto_merge: true
+      environment: preproduction
+      deployment_type: management
+      limit: mgt-preprod
+      release_branch: ${{ github.ref_name }}
