@@ -90,4 +90,5 @@ jobs:
             else
               echo "No valid prerelease is present"
               exit 1
+            fi
           fi
