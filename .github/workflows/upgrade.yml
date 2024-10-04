@@ -24,4 +24,4 @@ jobs:
       environment: preproduction
       deployment_type: management
       limit: mgt-preprod
-      release_branch: ${{ github.ref_name }}
+      release_branch: ""
