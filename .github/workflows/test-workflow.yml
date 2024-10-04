@@ -62,45 +62,32 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.TEST_TOKEN }}
         run: |
-          HAS_NEXT_PAGE=true
-          CURSOR="\"\""
           if [[ "${{ inputs.release_branch }}" == "" ]]; then
-            while $HAS_NEXT_PAGE
-            do
-              LATEST_RELEASE=$(gh api graphql -f query='
-                query {
-                  repository(owner: "aldato", name: "eda-hackathon") {
-                    releases(after: '$CURSOR',
-                            first: 1, orderBy: {field: CREATED_AT, direction: DESC}) {
-                      pageInfo {hasNextPage, startCursor}
-                      nodes {
-                        name
-                        isPrerelease
-                        isDraft
-                      }
+            LATEST_RELEASE=$(gh api graphql -f query='
+              query {
+                repository(owner: "aldato", name: "eda-hackathon") {
+                  releases(first: 1, orderBy: {field: CREATED_AT, direction: DESC}) {
+                    nodes {
+                      name
+                      isPrerelease
+                      isDraft
                     }
                   }
-                }')
-              IS_DRAFT=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isDraft')
-              IS_PRERELEASE=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isPrerelease')
-              IS_NAME_EMPTY=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
-              if [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "true" ] && [ "$IS_NAME_EMPTY" != "" ]; then
-                MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
-                break
-              fi
-              HAS_NEXT_PAGE=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.pageInfo.hasNextPage')
-              if [ "$HAS_NEXT_PAGE" == "false" ]; then
-                echo "No valid prerelease is present"
-                exit 1
-              fi
-              CURSOR=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.pageInfo.startCursor')
-            done
-
-            echo "MODEL_BRANCH=$MODEL_BRANCH" >> $GITHUB_ENV
-            echo "Using model branch "$MODEL_BRANCH
-            echo "SRE_BRANCH=$MODEL_BRANCH" >> $GITHUB_ENV
-            SRE_BRANCH=$MODEL_BRANCH
-            echo "Using sre branch "$SRE_BRANCH
-            echo "Dry run is "${{ inputs.dry_run }}
-            echo "Auto merge is "${{ inputs.auto_merge }}
+                }
+              }')
+            IS_DRAFT=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isDraft')
+            IS_PRERELEASE=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].isPrerelease')
+            IS_NAME_EMPTY=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
+            if [ "$IS_DRAFT" != "true" ] && [ "$IS_PRERELEASE" == "true" ] && [ "$IS_NAME_EMPTY" != "" ]; then
+              MODEL_BRANCH=$(echo $LATEST_RELEASE | jq -r '.data.repository.releases.nodes[].name')
+              echo "MODEL_BRANCH=$MODEL_BRANCH" >> $GITHUB_ENV
+              echo "Using model branch "$MODEL_BRANCH
+              echo "SRE_BRANCH=$MODEL_BRANCH" >> $GITHUB_ENV
+              SRE_BRANCH=$MODEL_BRANCH
+              echo "Using sre branch "$SRE_BRANCH
+              echo "Dry run is "${{ inputs.dry_run }}
+              echo "Auto merge is "${{ inputs.auto_merge }}
+            else
+              echo "No valid prerelease is present"
+              exit 1
           fi
