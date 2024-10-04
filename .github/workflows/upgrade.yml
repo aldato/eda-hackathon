@@ -25,3 +25,5 @@ jobs:
       deployment_type: management
       limit: mgt-preprod
       release_branch: ""
+    secrets:
+      inherit
