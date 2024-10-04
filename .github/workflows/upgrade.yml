@@ -10,12 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  print-tag:
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Prerelease tag used: ${{ github.ref_name }}"
-        run: exit 0
-
   call-upgrade-base:
     uses: ./.github/workflows/test-workflow.yml
     with:
@@ -24,6 +18,6 @@ jobs:
       environment: preproduction
       deployment_type: management
       limit: mgt-preprod
-      release_branch: ""
+      release_branch: ${{ github.ref_name }}
     secrets:
       inherit
