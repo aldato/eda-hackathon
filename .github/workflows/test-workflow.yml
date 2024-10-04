@@ -100,3 +100,9 @@ jobs:
           echo "Using SRE branch "$SRE_BRANCH
           echo "Dry run is "${{ inputs.dry_run }}
           echo "Auto merge is "${{ inputs.auto_merge }}
+
+      - name: Testing exit
+        env:
+          GH_TOKEN: ${{ secrets.TEST_TOKEN }}
+        run: |
+          echo "Helo World"
