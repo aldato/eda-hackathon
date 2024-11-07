@@ -1,13 +1,20 @@
-- name: EDA Hackathon Playbook
-  hosts: localhost
-  connection: local
+---
+- name: Timeout test
+  hosts: all
   gather_facts: false
-
   tasks:
-    - name: Print the vaulted message
-      ansible.builtin.debug:
-        msg: "Vault message: {{ vault_msg }}"
+    - name: Sleep for 4 hours
+      wait_for:
+        timeout: 14400
+      delegate_to: localhost
+      run_once: true
 
-    - name: Print template name
+    - name: Sleep for 60 seconds
+      wait_for:
+        timeout: 60
+      delegate_to: localhost
+      run_once: true
+
+    - name: Debug Hello World
       ansible.builtin.debug:
-        msg: "Your job template variable: {{ job_template_name }}"
+        msg: "Hello World"
