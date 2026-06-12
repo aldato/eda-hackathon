@@ -22,58 +22,59 @@
   pre_tasks:
     - name: Resolve gateway URL from attached AAP credential
       ansible.builtin.set_fact:
-        aap_host: >-
-          {{
-            lookup('env', 'CONTROLLER_HOST')
-            | default(lookup('env', 'TOWER_HOST'), true)
-            | regex_replace('/$', '')
-          }}
+        aap_host: "{{ lookup('env', 'CONTROLLER_HOST') | default(lookup('env', 'TOWER_HOST'), true) | regex_replace('/$', '') }}"
 
     - name: Fall back to TOWER_URL_BASE from controller settings
       when: aap_host | length == 0
       ansible.builtin.set_fact:
-        aap_host: >-
-          {{
-            lookup('ansible.controller.controller_api', 'settings/all')['TOWER_URL_BASE']
-            | regex_replace('/$', '')
-          }}
+        aap_host: "{{ lookup('ansible.controller.controller_api', 'settings/all')['TOWER_URL_BASE'] | regex_replace('/$', '') }}"
+
+    - name: Resolve admin credentials from attached AAP credential
+      ansible.builtin.set_fact:
+        aap_username: "{{ lookup('env', 'CONTROLLER_USERNAME') | default(lookup('env', 'TOWER_USERNAME'), true) }}"
+        aap_password: "{{ lookup('env', 'CONTROLLER_PASSWORD') | default(lookup('env', 'TOWER_PASSWORD'), true) }}"
 
     - name: Validate self-referential auth is available
       ansible.builtin.assert:
         that:
           - aap_host | length > 0
-          - >-
-            (lookup('env', 'CONTROLLER_USERNAME') | default('', true) | length > 0)
-            or (lookup('env', 'CONTROLLER_PASSWORD') | default('', true) | length > 0)
+          - aap_username | length > 0
+          - aap_password | length > 0
         fail_msg: >
           Attach a Red Hat Ansible Automation Platform credential for this instance
-          (gateway URL + admin user/password). The playbook needs CONTROLLER_HOST and
-          CONTROLLER_USERNAME/CONTROLLER_PASSWORD injected into the job environment.
+          (gateway URL + admin user/password). The playbook needs CONTROLLER_HOST,
+          CONTROLLER_USERNAME, and CONTROLLER_PASSWORD injected into the job environment.
 
-    - name: Show target and collection versions
+    - name: Show target
       ansible.builtin.debug:
         msg:
           - "Target (self): {{ aap_host }}"
+          - "Auth user: {{ aap_username }}"
           - "Collection check: run `ansible-galaxy collection list ansible.controller` in job output"
 
   tasks:
     - name: Run AAP-78115 reproduction
       block:
         - name: Create a gateway Bearer token on this instance
-          ansible.platform.token:
-            aap_hostname: "{{ aap_host }}"
-            aap_username: "{{ lookup('env', 'CONTROLLER_USERNAME') }}"
-            aap_password: "{{ lookup('env', 'CONTROLLER_PASSWORD') }}"
-            aap_validate_certs: "{{ validate_certs }}"
-            description: "{{ token_description }}"
-            scope: write
-            state: present
+          ansible.builtin.uri:
+            url: "{{ aap_host }}/api/gateway/v1/tokens/"
+            method: POST
+            user: "{{ aap_username }}"
+            password: "{{ aap_password }}"
+            force_basic_auth: true
+            body_format: json
+            body:
+              description: "{{ token_description }}"
+              scope: write
+            validate_certs: "{{ validate_certs }}"
+            status_code: 201
           register: token_create
           no_log: true
 
         - name: Capture token for repro steps
           ansible.builtin.set_fact:
-            repro_token: "{{ token_create.ansible_facts.aap_token.token }}"
+            repro_token: "{{ token_create.json.token }}"
+            repro_token_id: "{{ token_create.json.id }}"
           no_log: true
 
         - name: "Control test — direct API call with Bearer token (should succeed)"
@@ -117,13 +118,13 @@
 
       always:
         - name: Revoke reproduction token
-          ansible.platform.token:
-            aap_hostname: "{{ aap_host }}"
-            aap_username: "{{ lookup('env', 'CONTROLLER_USERNAME') }}"
-            aap_password: "{{ lookup('env', 'CONTROLLER_PASSWORD') }}"
-            aap_validate_certs: "{{ validate_certs }}"
-            existing_token: "{{ token_create.ansible_facts.aap_token }}"
-            state: absent
-          when: token_create is defined and token_create is changed
+          ansible.builtin.uri:
+            url: "{{ aap_host }}/api/gateway/v1/tokens/{{ repro_token_id }}/"
+            method: DELETE
+            user: "{{ aap_username }}"
+            password: "{{ aap_password }}"
+            force_basic_auth: true
+            validate_certs: "{{ validate_certs }}"
+            status_code: [204, 404]
+          when: repro_token_id is defined
           no_log: true
-
