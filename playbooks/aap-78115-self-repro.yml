@@ -69,13 +69,11 @@
             validate_certs: "{{ validate_certs }}"
             status_code: 201
           register: token_create
-          no_log: true
 
         - name: Capture token for repro steps
           ansible.builtin.set_fact:
             repro_token: "{{ token_create.json.token }}"
             repro_token_id: "{{ token_create.json.id }}"
-          no_log: true
 
         - name: "Control test — direct API call with Bearer token (should succeed)"
           ansible.builtin.uri:
@@ -126,4 +124,3 @@
             validate_certs: "{{ validate_certs }}"
             status_code: [204, 404]
           when: repro_token_id is defined
-          no_log: true
