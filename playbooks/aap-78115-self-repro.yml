@@ -4,8 +4,13 @@
 #
 # Job Template requirements:
 #   - Inventory: localhost
-#   - Credential: Red Hat Ansible Automation Platform (this instance's gateway URL + admin)
+#   - Credential: Red Hat Ansible Automation Platform (gateway URL + admin) — used ONLY to mint the test token
 #   - EE: default controller EE (ansible.controller 4.8.0 on vulnerable builds)
+#
+# Important: The AnsibleJob runner does NOT have admin username/password in its environment.
+# It only receives CONTROLLER_OAUTH_TOKEN from the connection secret. If those basic-auth
+# env vars leak into the repro task (from the attached credential), job_list will succeed
+# even on a vulnerable build and you get a false negative.
 
 - name: AAP-78115 — self-referential OAuth token auth repro
   hosts: localhost
@@ -42,15 +47,23 @@
           - aap_password | length > 0
         fail_msg: >
           Attach a Red Hat Ansible Automation Platform credential for this instance
-          (gateway URL + admin user/password). The playbook needs CONTROLLER_HOST,
-          CONTROLLER_USERNAME, and CONTROLLER_PASSWORD injected into the job environment.
+          (gateway URL + admin user/password). Needed to create the gateway test token.
 
-    - name: Show target
+    - name: Show target and auth context
       ansible.builtin.debug:
         msg:
           - "Target (self): {{ aap_host }}"
-          - "Auth user: {{ aap_username }}"
-          - "Collection check: run `ansible-galaxy collection list ansible.controller` in job output"
+          - "Auth user (token creation only): {{ aap_username }}"
+          - "Credential injects basic auth into job env: {{ (lookup('env', 'CONTROLLER_USERNAME') | default('', true) | length > 0) | ternary('yes — repro task will strip it', 'no') }}"
+
+    - name: Show ansible.controller collection version
+      ansible.builtin.command: ansible-galaxy collection list ansible.controller
+      register: controller_collection_version
+      changed_when: false
+
+    - name: Display ansible.controller collection version
+      ansible.builtin.debug:
+        var: controller_collection_version.stdout_lines
 
   tasks:
     - name: Run AAP-78115 reproduction
@@ -85,22 +98,50 @@
             validate_certs: "{{ validate_certs }}"
             status_code: 200
 
-        - name: "Bug repro — job_list with aap_token only (no username/password)"
+        - name: "Control test — empty basic auth fails (proves token-only path matters)"
+          ansible.builtin.uri:
+            url: "{{ aap_host }}/api/controller/v2/job_templates/"
+            method: GET
+            force_basic_auth: true
+            url_username: ""
+            url_password: ""
+            validate_certs: "{{ validate_certs }}"
+          register: empty_basic_auth_result
+          ignore_errors: true
+
+        - name: Show empty basic auth control result
+          ansible.builtin.debug:
+            msg: >-
+              Empty basic auth returned HTTP {{ empty_basic_auth_result.status | default('error') }}.
+              {{ 'Expected 401 — gateway rejects empty basic auth.' if (empty_basic_auth_result.status | default(0)) == 401 else 'Unexpected; check gateway auth behaviour.' }}
+
+        - name: "Bug repro — job_list with token only (matches AnsibleJob runner env)"
           ansible.controller.job_list:
             controller_host: "{{ aap_host }}"
             aap_token: "{{ repro_token }}"
+            controller_username: ""
+            controller_password: ""
             validate_certs: "{{ validate_certs }}"
             request_timeout: 10
+          environment:
+            CONTROLLER_OAUTH_TOKEN: "{{ repro_token }}"
+            TOWER_OAUTH_TOKEN: "{{ repro_token }}"
+            AAP_TOKEN: "{{ repro_token }}"
+            CONTROLLER_USERNAME: ""
+            CONTROLLER_PASSWORD: ""
+            TOWER_USERNAME: ""
+            TOWER_PASSWORD: ""
           register: job_list_result
+          ignore_errors: true
 
         - name: Report result
           ansible.builtin.debug:
             msg: >-
               {{
-                'BUG REPRODUCED (AAP-78115): ansible.controller returned HTTP 401 despite a valid
-                gateway Bearer token. curl/uri works; collection ignores aap_token.'
+                'BUG REPRODUCED (AAP-78115): ansible.controller returned HTTP 401 with token-only auth.
+                Bearer token works via uri; collection ignores aap_token/CONTROLLER_OAUTH_TOKEN and uses empty Basic auth.'
                 if (job_list_result is failed and '401' in (job_list_result.msg | default('')))
-                else 'NOT REPRODUCED: job_list succeeded — this build likely includes the fix.'
+                else 'NOT REPRODUCED: job_list succeeded with token-only auth — collection is sending Bearer token correctly.'
               }}
 
         - name: Fail when bug is reproduced (expected on vulnerable 4.8.0)
