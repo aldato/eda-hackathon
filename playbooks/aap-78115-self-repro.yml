@@ -94,8 +94,6 @@
             validate_certs: "{{ validate_certs }}"
             request_timeout: 10
           register: job_list_result
-          ignore_errors: true
-          no_log: true
 
         - name: Report result
           ansible.builtin.debug:
